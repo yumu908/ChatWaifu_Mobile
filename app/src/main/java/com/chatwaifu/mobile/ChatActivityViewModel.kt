@@ -3,6 +3,7 @@ package com.chatwaifu.mobile
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import java.io.File
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,6 +19,7 @@ import com.chatwaifu.mobile.utils.LipsValueHandler
 import com.chatwaifu.mobile.utils.LocalModelManager
 import com.chatwaifu.translate.ITranslate
 import com.chatwaifu.translate.baidu.BaiduTranslateService
+import com.chatwaifu.translate.bing.BingTranslateService
 import com.chatwaifu.vits.utils.SoundGenerateHelper
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
@@ -29,11 +31,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 
-/**
- * Description: main view model
- * Author: Voine
- * Date: 2023/2/18
- */
 class ChatActivityViewModel : ViewModel() {
     companion object {
         private const val TAG = "ChatActivityViewModel"
@@ -50,7 +47,6 @@ class ChatActivityViewModel : ViewModel() {
     val drawerShouldBeOpened = MutableLiveData<Boolean>()
     val chatStatusLiveData = MutableLiveData<ChatStatus>().apply { value = ChatStatus.DEFAULT }
 
-    //使用 shared flow 为了解决数据倒灌的问题....
     private val _loadVITSModelLiveData = MutableSharedFlow<VITSLoadStatus>()
     val loadVITSModelLiveData = _loadVITSModelLiveData.asSharedFlow()
     private val _chatContentUIFlow = MutableSharedFlow<ChatDialogContentUIState>()
@@ -63,6 +59,7 @@ class ChatActivityViewModel : ViewModel() {
     var currentLive2DModelPath: String = ""
     var currentLive2DModelName: String = ""
     var currentVITSModelName: String = ""
+    var currentVITSModelPath: String = ""
     var needTranslate: Boolean = true
     var needChatGPTProxy: Boolean = false
 
@@ -94,13 +91,57 @@ class ChatActivityViewModel : ViewModel() {
         sp.getString(Constant.SAVED_CHAT_KEY, null)?.let {
             chatGPTNetService?.setPrivateKey(it)
         }
-        val translateAppId = sp.getString(Constant.SAVED_TRANSLATE_APP_ID, null)
-        val translateKey = sp.getString(Constant.SAVED_TRANSLATE_KEY, null)
-        setBaiduTranslate(translateAppId ?: return, translateKey ?: return)
+        
+        // 核心修复：根据已保存的百度 Key 决定使用哪个翻译服务
+        val appId = sp.getString(Constant.SAVED_TRANSLATE_APP_ID, null)
+        val appKey = sp.getString(Constant.SAVED_TRANSLATE_KEY, null)
+        
+        if (!appId.isNullOrBlank() && !appKey.isNullOrBlank()) {
+            translate = BaiduTranslateService(
+                context = ChatWaifuApplication.context,
+                appid = appId,
+                privateKey = appKey
+            )
+            Log.d(TAG, "Use Baidu Translate")
+        } else {
+            // 如果百度 Key 为空，回退到 Bing 翻译
+            translate = BingTranslateService(ChatWaifuApplication.context)
+            Log.d(TAG, "Use Bing Translate")
+        }
+
         needTranslate = sp.getBoolean(Constant.SAVED_USE_TRANSLATE, true)
         needChatGPTProxy = sp.getBoolean(Constant.SAVED_USE_CHATGPT_PROXY, false)
         val proxyUrl = if(needChatGPTProxy) sp.getString(Constant.SAVED_USE_CHATGPT_PROXY_URL, null) else null
         chatGPTNetService?.updateRetrofit(proxyUrl)
+
+        // Apply voice scale
+        vitsHelper.lengthScale = sp.getFloat(Constant.SAVED_VOICE_SCALE, 1.0f)
+        Log.d(TAG, "refreshAllKeys: voice lengthScale set to: ${vitsHelper.lengthScale}")
+
+        // Set translate target language based on current VITS model language
+        val modelLang = vitsHelper.getModelLanguage()
+        val targetLang = if (modelLang == "zh") "zh" else "jp"
+        translate?.toLanguage = targetLang
+        Log.d(TAG, "refreshAllKeys: translate target language set to: $targetLang")
+
+        // Reload VITS model if path changed (e.g. settings saved)
+        if (currentLive2DModelName.isNotEmpty()) {
+            val targetPath = getVitsPathForCharacter(currentLive2DModelName)
+            if (targetPath != currentVITSModelPath) {
+                Log.d(TAG, "VITS path changed from $currentVITSModelPath to $targetPath, reloading...")
+                loadVitsModel(targetPath)
+            }
+        }
+    }
+
+    fun getVitsPathForCharacter(characterName: String): String {
+        val overrideKey = "${Constant.SAVED_OVERRIDE_VITS_PATH}_$characterName"
+        val overridePath = sp.getString(overrideKey, "") ?: ""
+        return if (overridePath.isNotBlank() && File(overridePath).exists()) {
+            overridePath
+        } else {
+            ChatWaifuApplication.baseAppDir + File.separator + Constant.VITS_BASE_PATH + File.separator + characterName
+        }
     }
 
     fun mainLoop() {
@@ -133,15 +174,6 @@ class ChatActivityViewModel : ViewModel() {
         }
     }
 
-    private fun setBaiduTranslate(appid: String, privateKey: String) {
-        translate = BaiduTranslateService(
-            ChatWaifuApplication.context,
-            appid = appid,
-            privateKey = privateKey
-        )
-    }
-
-
     fun initModel(context: Context) {
         initModelResultLiveData.postValue(emptyList())
         loadingUILiveData.postValue(Pair(true, "Init Models...."))
@@ -155,21 +187,50 @@ class ChatActivityViewModel : ViewModel() {
         lipsValueHandler.initLipSync()
     }
 
-    fun loadVitsModel(basePath: String) {
+    fun loadVitsModel(path: String) {
+        currentVITSModelPath = path
         loadingUILiveData.postValue(Pair(true, "Load VITS Model...."))
-        val rootFiles = localModelManager.getVITSModelFiles(basePath)
+        
+        val isJsonPath = path.endsWith(".json", ignoreCase = true)
+        val configPath = if (isJsonPath) path else {
+            val rootFiles = localModelManager.getVITSModelFiles(path)
+            rootFiles?.find { it.name.endsWith("json", ignoreCase = true) }?.absolutePath ?: ""
+        }
+        val modelFolder = if (isJsonPath) File(path).parentFile?.absolutePath ?: "" else path
+        
+        // Find bin file path
+        var binPath = ""
+        val files = File(modelFolder).listFiles()
+        if (!files.isNullOrEmpty()) {
+            binPath = files.find { it.name.endsWith("bin", ignoreCase = true) }?.absolutePath ?: ""
+        }
+        if (binPath.isEmpty()) {
+            val fallbackBins = listOf("dec.ncnn.bin", "dp.ncnn.bin", "flow.ncnn.bin", "flow.reverse.ncnn.bin", "emb_g.bin", "emb_t.bin", "enc_p.ncnn.bin", "enc_q.ncnn.bin")
+            val binFile = fallbackBins.map { File(modelFolder, it) }.find { it.exists() }
+            binPath = binFile?.absolutePath ?: ""
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             val configResult = suspendCancellableCoroutine<Boolean> {
-                vitsHelper.loadConfigs(rootFiles?.find { it.name.endsWith("json") }?.absolutePath) { isSuccess ->
+                vitsHelper.loadConfigs(configPath) { isSuccess ->
                     it.safeResume(isSuccess)
                 }
             }
 
             val binResult = suspendCancellableCoroutine<Boolean> {
-                vitsHelper.loadModel(rootFiles?.find { it.name.endsWith("bin") }?.absolutePath) { isSuccess ->
+                vitsHelper.loadModel(binPath) { isSuccess ->
                     it.safeResume(isSuccess)
                 }
             }
+
+            // Update translate target language dynamically on model load
+            if (configResult) {
+                val modelLang = vitsHelper.getModelLanguage()
+                val targetLang = if (modelLang == "zh") "zh" else "jp"
+                translate?.toLanguage = targetLang
+                Log.d(TAG, "loadVitsModel: translate target language set to: $targetLang")
+            }
+
             _loadVITSModelLiveData.emit(if (binResult && configResult) VITSLoadStatus.STATE_SUCCESS else VITSLoadStatus.STATE_FAILED)
             loadingUILiveData.postValue(Pair(false, ""))
         }
@@ -210,7 +271,7 @@ class ChatActivityViewModel : ViewModel() {
     private suspend fun fetchTranslateIfNeed(responseText: String?): String? {
         translate ?: return responseText
         responseText ?: return null
-        if (!needTranslate) {
+        if (!needTranslate || vitsHelper.getModelLanguage() == "zh") {
             return responseText
         }
         chatStatusLiveData.postValue(ChatStatus.TRANSLATE)

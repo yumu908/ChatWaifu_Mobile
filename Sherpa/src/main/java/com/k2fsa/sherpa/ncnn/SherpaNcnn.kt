@@ -1,6 +1,7 @@
 package com.k2fsa.sherpa.ncnn
 
 import android.content.res.AssetManager
+import android.os.Build
 
 data class EndpointRule(
     var mustContainNonSilence: Boolean,
@@ -123,18 +124,29 @@ fun getFbankConfig(): FbankOptions {
     return fbankConfig
 }
 
-/*
-@param type
-0 - https://huggingface.co/csukuangfj/sherpa-ncnn-conv-emformer-transducer-2022-12-04
-    This model supports only Chinese
+fun isEmulator(): Boolean {
+    return (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
+            || Build.FINGERPRINT.startsWith("generic")
+            || Build.FINGERPRINT.startsWith("unknown")
+            || Build.HARDWARE.contains("goldfish")
+            || Build.HARDWARE.contains("ranchu")
+            || Build.MODEL.contains("google_sdk")
+            || Build.MODEL.contains("Emulator")
+            || Build.MODEL.contains("Android SDK built for x86")
+            || Build.MANUFACTURER.contains("Genymotion")
+            || Build.PRODUCT.contains("sdk_google")
+            || Build.PRODUCT.contains("google_sdk")
+            || Build.PRODUCT.contains("sdk")
+            || Build.PRODUCT.contains("sdk_x86")
+            || Build.PRODUCT.contains("vbox86p")
+            || Build.PRODUCT.contains("emulator")
+            || Build.PRODUCT.contains("simulator")
+}
 
-1 - https://huggingface.co/csukuangfj/sherpa-ncnn-conv-emformer-transducer-2022-12-06
-    This model supports both English and Chinese
-
-2 - https://huggingface.co/csukuangfj/sherpa-ncnn-conv-emformer-transducer-2022-12-08
-    This is a small model with about 18 M parameters. It supports only Chinese
- */
 fun getModelConfig(type: Int, useGPU: Boolean): ModelConfig? {
+    // numThreads = 1 is essential on emulators to prevent OpenMP crashes
+    val threads = if (isEmulator()) 1 else 4
+    
     when (type) {
         1 -> {
             val modelDir = "sherpa-ncnn-conv-emformer-transducer-2022-12-06"
@@ -146,7 +158,7 @@ fun getModelConfig(type: Int, useGPU: Boolean): ModelConfig? {
                 joinerParam = "$modelDir/joiner_jit_trace-pnnx.ncnn.int8.param",
                 joinerBin = "$modelDir/joiner_jit_trace-pnnx.ncnn.int8.bin",
                 tokens = "$modelDir/tokens.txt",
-                numThreads = 4,
+                numThreads = threads,
                 useGPU = useGPU,
             )
 
@@ -161,7 +173,7 @@ fun getModelConfig(type: Int, useGPU: Boolean): ModelConfig? {
                 joinerParam = "$modelDir/joiner_jit_trace-pnnx-epoch-15-avg-3.ncnn.param",
                 joinerBin = "$modelDir/joiner_jit_trace-pnnx-epoch-15-avg-3.ncnn.bin",
                 tokens = "$modelDir/tokens.txt",
-                numThreads = 4,
+                numThreads = threads,
                 useGPU = useGPU,
             )
         }

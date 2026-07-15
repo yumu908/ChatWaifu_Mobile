@@ -9,6 +9,7 @@ import android.os.IBinder
 import android.util.Log
 import android.view.MotionEvent
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.chatwaifu.mobile.R
 import com.chatwaifu.mobile.application.ChatWaifuApplication
 import com.chatwaifu.mobile.data.Constant
@@ -51,8 +52,12 @@ class ChatFragmentViewModel: ViewModel() {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             sherpaService = ISherpaAidlInterface.Stub.asInterface(service)
             Log.d(TAG,"onServiceConnected, init sherpa")
-            sherpaService?.initSherpa()
-            Log.d(TAG,"onServiceConnected, init sherpa finish")
+            try {
+                sherpaService?.initSherpa()
+                Log.d(TAG,"onServiceConnected, init sherpa finish")
+            } catch (e: Exception) {
+                Log.e(TAG, "initSherpa failed", e)
+            }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -61,7 +66,9 @@ class ChatFragmentViewModel: ViewModel() {
     }
 
     fun bindSherpa(context: Context) {
+        if (sherpaService != null) return
         try {
+            Log.d(TAG, "binding sherpa service...")
             val intent = Intent(context, SherpaService::class.java)
             context.bindService(intent, sherpaConnection, Context.BIND_AUTO_CREATE)
         } catch (e: Exception) {
@@ -72,6 +79,7 @@ class ChatFragmentViewModel: ViewModel() {
     fun unbindSherpa(context: Context) {
         try {
             context.unbindService(sherpaConnection)
+            sherpaService = null
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -112,6 +120,11 @@ class ChatFragmentViewModel: ViewModel() {
     fun onRecordStart() {
         Log.d(TAG,"start record")
         try {
+            if (sherpaService == null) {
+                showToast("Speech model is still loading, please wait a moment...")
+                Log.e(TAG, "sherpaService is null, cannot start record")
+                return
+            }
             sherpaService?.startRecord()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -120,18 +133,27 @@ class ChatFragmentViewModel: ViewModel() {
 
     fun onRecordEnd(recognizeCallback: (result: String?) -> Unit) {
         try {
+            if (sherpaService == null) {
+                showToast("Speech model is still loading, please wait a moment...")
+                recognizeCallback(null)
+                return
+            }
             sherpaService?.finishRecord(object : ISherpaResultAidlCallback.Stub() {
                 override fun onResult(result: String?) {
-                    Log.d(TAG, "record result is $result")
-                    if (result.isNullOrBlank()) {
-                        showToast(ChatWaifuApplication.context.resources.getString(R.string.chat_record_too_short))
-                        return
+                    viewModelScope.launch(Dispatchers.Main) {
+                        Log.d(TAG, "record result is $result")
+                        if (result.isNullOrBlank()) {
+                            showToast(ChatWaifuApplication.context.resources.getString(R.string.chat_record_too_short))
+                            recognizeCallback(null)
+                            return@launch
+                        }
+                        recognizeCallback(result)
                     }
-                    recognizeCallback(result)
                 }
             })
         } catch (e: Exception) {
             e.printStackTrace()
+            recognizeCallback(null)
         }
     }
 

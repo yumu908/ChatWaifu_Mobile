@@ -817,7 +817,9 @@ Mat concat(const Mat &m1, const Mat &m2, const Option &opt) {
 }
 
 std::string join_path(const std::string &folder, const std::string &file) {
-    if (folder.find_last_of('/') || folder.find_last_of('\\')) {
+    if (folder.empty()) return file;
+    char last = folder.back();
+    if (last == '/' || last == '\\') {
         return folder + file;
     } else {
         return folder + "/" + file;

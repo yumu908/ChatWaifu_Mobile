@@ -34,6 +34,7 @@ object LipSyncJNI {
     }
 
     init {
+        System.loadLibrary("OVRLipSync")
         System.loadLibrary("lipsync")
     }
 }

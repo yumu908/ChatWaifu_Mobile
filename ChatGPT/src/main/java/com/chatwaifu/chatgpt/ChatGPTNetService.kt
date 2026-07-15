@@ -26,8 +26,8 @@ class ChatGPTNetService(val context: Context) {
     companion object {
         private const val TEST_MODE = false
         private const val TAG = "ChatGPTNetService"
-        private const val CHATGPT_BASE_URL = "https://api.openai.com/"
-        val CHATGPT_DEAFULT_PROXY_URL = "https://api.openai-proxy.com/"
+        private const val CHATGPT_BASE_URL = "https://open.bigmodel.cn/api/paas/v4/"
+        val CHATGPT_DEAFULT_PROXY_URL = "https://open.bigmodel.cn/api/paas/v4/"
         private const val TIME_OUT_SECOND = 100L
         private const val MAX_LIST_SIZE = 100
     }
@@ -91,7 +91,13 @@ class ChatGPTNetService(val context: Context) {
             listOf(system) + sendPart
         } ?: sendPart
 
-        val call = chatAPI.sendMsg(ChatGPTRequestData(messages = requestMsg).toRequestBody())
+        val baseUrlStr = retrofit.baseUrl().toString()
+        val path = if (baseUrlStr.contains("bigmodel.cn") || baseUrlStr.contains("/v4/") || baseUrlStr.endsWith("/v4")) {
+            "chat/completions"
+        } else {
+            "v1/chat/completions"
+        }
+        val call = chatAPI.sendMsg(path, ChatGPTRequestData(messages = requestMsg).toRequestBody())
         call.enqueue(object : Callback<ChatGPTResponseData> {
             override fun onResponse(
                 call: Call<ChatGPTResponseData>,

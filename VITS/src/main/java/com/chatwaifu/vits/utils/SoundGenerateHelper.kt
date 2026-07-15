@@ -29,7 +29,7 @@ class SoundGenerateHelper(val context: Context) {
     private var multi = true
     private var noiseScale: Float = .9f
     private var noiseScaleW: Float = .9f
-    private var lengthScale: Float = 1f
+    var lengthScale: Float = 1f
     private var sid = 0
     private var modelInitState: Boolean = false
     private var voiceConvert = false
@@ -109,6 +109,18 @@ class SoundGenerateHelper(val context: Context) {
         }
         if (targetFolder == "") targetFolder = folder
 
+        // Robust file existence verification
+        val requiredFiles = if (multi) {
+            listOf("emb_t.bin", "emb_g.bin", "enc_p.ncnn.bin", "enc_q.ncnn.bin", "dec.ncnn.bin", "flow.ncnn.bin", "flow.reverse.ncnn.bin", "dp.ncnn.bin")
+        } else {
+            listOf("emb_t.bin", "enc_p.ncnn.bin", "dec.ncnn.bin", "flow.reverse.ncnn.bin", "dp.ncnn.bin")
+        }
+        val missingFiles = requiredFiles.filter { !java.io.File(folder, it).exists() }
+        if (missingFiles.isNotEmpty()) {
+            Log.e(TAG, "Cannot load model. Missing files in $folder: $missingFiles")
+            return callback.invoke(false)
+        }
+
         modelInitState = Vits.init_vits(
             context.assets,
             folder,
@@ -119,6 +131,15 @@ class SoundGenerateHelper(val context: Context) {
         Log.d(TAG, "model init status $modelInitState")
 
         callback.invoke(modelInitState)
+    }
+
+    fun getModelLanguage(): String {
+        val cleaner = config?.data?.text_cleaners?.firstOrNull() ?: ""
+        return when {
+            cleaner.contains("chinese") -> "zh"
+            cleaner.contains("japanese") -> "ja"
+            else -> "ja"
+        }
     }
 
     // processing inputs

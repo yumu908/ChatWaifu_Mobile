@@ -10,15 +10,16 @@ android {
     defaultConfig {
         minSdk rootProject.ext.minSdkVersion
         targetSdk rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.2.1"
 
         externalNativeBuild {
             cmake {
                 cppFlags '-std=c++11'
+                // Use shared C++ runtime to avoid OpenMP and STL conflicts across modules
+                arguments "-DANDROID_STL=c++_shared"
             }
         }
         ndk{
+            // Consistent with the rest of the project
             abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
     }
@@ -37,6 +38,14 @@ android {
         main {
             jni.srcDirs = ["src/main/cpp"]
         }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = '11'
     }
 }
 

@@ -7,5 +7,6 @@ package com.chatwaifu.translate
  * Date: 2023/2/20
  */
 interface ITranslate {
+    var toLanguage: String
     fun getTranslateResult(input: String, callback: (result: String?) -> Unit)
 }

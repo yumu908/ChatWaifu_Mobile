@@ -1,11 +1,14 @@
 package com.chatwaifu.mobile
 
+import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.ui.platform.ComposeView
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.ViewModelProvider
 import com.chatwaifu.mobile.ui.base.ChatWaifuRootView
 import com.chatwaifu.mobile.ui.showToast
@@ -19,6 +22,11 @@ class ChatActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Orientation is strictly managed via AndroidManifest.xml (locked).
+        
+        checkPermissions()
+
         setContentView(
             ComposeView(this).apply {
                 setContent {
@@ -42,15 +50,31 @@ class ChatActivity : AppCompatActivity() {
         chatViewModel.refreshAllKeys()
         chatViewModel.mainLoop()
     }
+
+    private fun checkPermissions() {
+        val permissions = mutableListOf(Manifest.permission.RECORD_AUDIO)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+
+        val needRequest = permissions.filter {
+            ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (needRequest.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, needRequest.toTypedArray(), 100)
+        }
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-            showToast("no permission...")
-            finish()
+        if (grantResults.isNotEmpty() && grantResults.any { it != PackageManager.PERMISSION_GRANTED }) {
+            showToast("Some permissions were denied. Voice features may not work.")
         }
     }
 

@@ -19,7 +19,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 class BaiduTranslateService(
     var context: Context,
     var fromLanguage: String = "auto",
-    var toLanguage: String = "jp",
+    override var toLanguage: String = "jp",
     var salt: String = "114514",
     var appid: String? = null,
     var privateKey: String? = null

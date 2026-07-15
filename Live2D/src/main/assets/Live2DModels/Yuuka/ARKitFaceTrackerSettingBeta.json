@@ -21,8 +21,8 @@
             "CubismParameter"     : "ParamBodyAngleX",
             "FaceTrackerDataMin"  : -30,
             "FaceTrackerDataMax"  : 30,
-            "ParameterMin"        : -10,
-            "ParameterMax"        : 10,
+            "ParameterMin"        : -30,
+            "ParameterMax"        : 30,
             "Smooth"              : 0.2
         }
     ],
@@ -41,8 +41,8 @@
             "CubismParameter"     : "ParamBodyAngleY",
             "FaceTrackerDataMin"  : -30,
             "FaceTrackerDataMax"  : 30,
-            "ParameterMin"        : -10,
-            "ParameterMax"        : 10,
+            "ParameterMin"        : -30,
+            "ParameterMax"        : 30,
             "Smooth"              : 0.2
         }
     ],
@@ -61,8 +61,8 @@
             "CubismParameter"     : "ParamBodyAngleZ",
             "FaceTrackerDataMin"  : -30,
             "FaceTrackerDataMax"  : 30,
-            "ParameterMin"        : -10,
-            "ParameterMax"        : 10,
+            "ParameterMin"        : -30,
+            "ParameterMax"        : 30,
             "Smooth"              : 0.2
         }
     ],

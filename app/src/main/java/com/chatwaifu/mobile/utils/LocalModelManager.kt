@@ -190,12 +190,20 @@ class LocalModelManager() {
      * if external model has multi speaker, get speaker id from setting
      */
     fun getVITSSpeakerId(currentLive2DModelName: String): Int {
-        return when (currentLive2DModelName) {
-            Constant.LOCAL_MODEL_YUUKA,
-            Constant.LOCAL_MODEL_AMADEUS,
-            Constant.LOCAL_MODEL_ATRI -> 0
-            else -> {
-                sp.getInt(Constant.SAVED_EXTERNAL_MODEL_SPEAKER_ID, 0)
+        val overrideKey = "${Constant.SAVED_OVERRIDE_VITS_PATH}_$currentLive2DModelName"
+        val overridePath = sp.getString(overrideKey, "") ?: ""
+        val hasOverride = overridePath.isNotBlank() && java.io.File(overridePath).exists()
+        
+        return if (hasOverride) {
+            sp.getInt(Constant.SAVED_EXTERNAL_MODEL_SPEAKER_ID, 0)
+        } else {
+            when (currentLive2DModelName) {
+                Constant.LOCAL_MODEL_YUUKA,
+                Constant.LOCAL_MODEL_AMADEUS,
+                Constant.LOCAL_MODEL_ATRI -> 0
+                else -> {
+                    sp.getInt(Constant.SAVED_EXTERNAL_MODEL_SPEAKER_ID, 0)
+                }
             }
         }
     }

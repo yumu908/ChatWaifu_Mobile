@@ -8,8 +8,9 @@ package com.chatwaifu.mobile.data
  */
 object Constant {
     const val SAVED_CHAT_KEY = "saved_chat_key"
-    const val SAVED_TRANSLATE_APP_ID = "saved_translate_id"
+    const val SAVED_TRANSLATE_APP_ID = "saved_translate_app_id"
     const val SAVED_TRANSLATE_KEY = "saved_translate_key"
+
     const val SAVED_STORE = "saved_store"
     const val SAVED_CHAT_NAME = "saved_chat_name"
     const val SAVED_FLAG_NEED_COPY_DATA = "need_copy_data"
@@ -22,6 +23,9 @@ object Constant {
     const val SAVED_EXTERNAL_MODEL_SPEAKER_ID = "saved_model_speaker_id"
     val SAVED_USE_CHATGPT_PROXY = "saved_use_chatgpt_proxy"
     val SAVED_USE_CHATGPT_PROXY_URL = "saved_use_chatgpt_proxy_url"
+
+    const val SAVED_SHERPA_MODEL_TYPE = "saved_sherpa_model_type"
+    const val SHERPA_MODEL_BASE_PATH = "sherpa_models"
 
     const val LIVE2D_BASE_PATH = "Live2DModels"
     const val VITS_BASE_PATH = "VITSModels"
@@ -38,4 +42,7 @@ object Constant {
 
     val EXTEND_LIVE2D_PATH = "chatwaifu/live2d/"
     val EXTEND_VITS_PATH = "chatwaifu/vits/"
+    
+    const val SAVED_OVERRIDE_VITS_PATH = "saved_override_vits_path"
+    const val SAVED_VOICE_SCALE = "saved_voice_scale"
 }

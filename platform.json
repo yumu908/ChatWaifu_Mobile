@@ -1,0 +1,10 @@
+﻿{
+  "download_base_url": "https://sbmdbjdb-99.oss-cn-beijing.aliyuncs.com/livetalking/",
+  "智谱清言": {
+    "ApiKey": "795e7eb6ae8c42e3956d472474b106a7.48q6qO0MTyXAo0NM",
+    "Models": [
+      "glm-4v-flash"
+    ],
+    "EndPoint": "https://open.bigmodel.cn/api/paas/v4"
+  }
+}

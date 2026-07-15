@@ -12,14 +12,26 @@ android {
         targetSdk rootProject.ext.targetSdkVersion
 
         consumerProguardFiles "consumer-rules.pro"
-        ndk{
+        ndk {
+            // Consistent with the rest of the project to avoid OpenMP conflicts on emulators
             abiFilters 'armeabi-v7a', 'arm64-v8a'
         }
         externalNativeBuild {
             cmake {
                 cppFlags ""
+                // Use shared C++ runtime to avoid OpenMP and STL conflicts across modules
+                arguments "-DANDROID_STL=c++_shared"
                 abiFilters 'armeabi-v7a', 'arm64-v8a'
             }
+        }
+    }
+
+    sourceSets {
+        main {
+            // Include the directory containing prebuilt .so files so they are packaged into the APK
+            jniLibs.srcDirs = ['src/main/cpp/ovr/lib']
+            // Disable default jni src to avoid conflicts with CMake
+            jni.srcDirs = []
         }
     }
 

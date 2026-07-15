@@ -4,6 +4,7 @@ import okhttp3.RequestBody
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.POST
+import retrofit2.http.Url
 
 /**
  * Description: GhatGPTAPI
@@ -11,6 +12,6 @@ import retrofit2.http.POST
  * Date: 2023/2/18
  */
 interface GhatGPTAPI {
-    @POST("v1/chat/completions")
-    fun sendMsg(@Body requestMsg: RequestBody): Call<ChatGPTResponseData>
+    @POST
+    fun sendMsg(@Url url: String, @Body requestMsg: RequestBody): Call<ChatGPTResponseData>
 }

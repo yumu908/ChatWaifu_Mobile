@@ -98,7 +98,21 @@ class ChannelListFragment : Fragment() {
         activityViewModel.loadModelSystemSetting(item.characterName)
         activityViewModel.currentVITSModelName = item.characterName
         activityViewModel.loadChatListCache(item.characterName)
-        activityViewModel.loadVitsModel(item.characterVitsPath)
+        
+        // 检查用户是否在设置中为该角色单独选择了覆盖 TTS 模型
+        val sp = requireContext().getSharedPreferences(
+            com.chatwaifu.mobile.data.Constant.SAVED_STORE,
+            android.content.Context.MODE_PRIVATE
+        )
+        val overrideKey = com.chatwaifu.mobile.data.Constant.SAVED_OVERRIDE_VITS_PATH + "_" + item.characterName
+        val overridePath = sp.getString(overrideKey, "") ?: ""
+        val vitsPath = if (overridePath.isNotBlank() && java.io.File(overridePath).exists()) {
+            Log.d(TAG, "Using override VITS model for ${item.characterName}: $overridePath")
+            overridePath
+        } else {
+            item.characterVitsPath
+        }
+        activityViewModel.loadVitsModel(vitsPath)
     }
 
     companion object {
